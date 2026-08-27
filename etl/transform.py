@@ -9,6 +9,7 @@ def build_players_dimension():
     batting = extract_batting_stats()[['mlbID', 'Name']]
     pitching = extract_pitching_stats()[['mlbID', 'Name']]
     combined = pd.concat([batting, pitching], ignore_index=True)
+    combined['mlbID'] = combined['mlbID'].astype(int)
     combined = combined.drop_duplicates(subset='mlbID')
     combined['Name'] = combined['Name'].apply(fix_name_encoding)
     combined = combined.rename(columns={'mlbID': 'mlbam_id', 'Name': 'full_name'})
