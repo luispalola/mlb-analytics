@@ -55,6 +55,7 @@ CREATE TABLE batting_stats (
     slg NUMERIC(4,3),
     ops NUMERIC(4,3),
     war NUMERIC(4,1),
+    data_as_of DATE NOT NULL DEFAULT CURRENT_DATE,
     UNIQUE (player_id, season)
 );
 
@@ -75,6 +76,7 @@ CREATE TABLE pitching_stats (
     whip NUMERIC(4,3),
     fip NUMERIC(4,2),
     war NUMERIC(4,1),
+    data_as_of DATE NOT NULL DEFAULT CURRENT_DATE,
     UNIQUE (player_id, season)
 );
 
