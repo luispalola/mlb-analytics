@@ -48,13 +48,55 @@ def prepare_batting_stats(df):
         'OPS': 'ops',
         'WAR': 'war',
     })
-
     cols = ['player_id', 'team_id', 'season', 'games_played', 'plate_appearances', 'at_bats', 'hits',
             'doubles', 'triples', 'home_runs', 'rbi', 'walks', 'strikeouts', 'stolen_bases', 'avg', 'obp', 'slg', 'ops', 'war']
     return df[cols]
 
+
+def load_batting_stats(df):
+    df = df.astype(object).where(pd.notnull(df), None)
+    with engine.begin() as conn:
+        for row in df.itertuples(index=False):
+            conn.execute(
+                text("""
+                    INSERT INTO batting_stats (
+                        player_id, team_id, season, games_played, plate_appearances, at_bats,
+                        hits, doubles, triples, home_runs, rbi, walks, strikeouts, stolen_bases,
+                        avg, obp, slg, ops, war
+                    )
+                    VALUES (
+                        :player_id, :team_id, :season, :games_played, :plate_appearances, :at_bats,
+                        :hits, :doubles, :triples, :home_runs, :rbi,  :walks, :strikeouts, :stolen_bases,
+                        :avg, :obp, :slg, :ops, :war
+                    )
+                    ON CONFLICT (player_id, season) DO UPDATE SET
+                        team_id = EXCLUDED.team_id,
+                        games_played = EXCLUDED.games_played,
+                        plate_appearances = EXCLUDED.plate_appearances,
+                        at_bats = EXCLUDED.at_bats,
+                        hits = EXCLUDED.hits,
+                        doubles = EXCLUDED.doubles,
+                        triples = EXCLUDED.triples,
+                        home_runs = EXCLUDED.home_runs,
+                        rbi = EXCLUDED.rbi,
+                        walks = EXCLUDED.walks,
+                        strikeouts = EXCLUDED.strikeouts,
+                        stolen_bases = EXCLUDED.stolen_bases,
+                        avg = EXCLUDED.avg,
+                        obp = EXCLUDED.obp,
+                        slg = EXCLUDED.slg,
+                        ops = EXCLUDED.ops,
+                        war = EXCLUDED.war,
+                        data_as_of = CURRENT_DATE
+                """),
+                row._asdict()
+            )
+
 if __name__ == "__main__":
-    from transform import build_players_dimension
-    df = build_players_dimension()
-    load_players(df)
-    print(f"Loaded {len(df)} players")
+    from transform import build_players_dimension, build_batting_stats
+    players_df = build_players_dimension()
+    load_players(players_df)
+    print(f"Loaded {len(players_df)} players")
+    batting_df = prepare_batting_stats(build_batting_stats())
+    load_batting_stats(batting_df)
+    print(f"Loaded {len(batting_df)} batting stats lines")
