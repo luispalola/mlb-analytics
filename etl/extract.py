@@ -105,6 +105,45 @@ def _fixed_make_numeric(data):
     return data
 _team_results.make_numeric=_fixed_make_numeric
 
+def _fixed_get_table(soup, team):
+    try:
+        table=soup.find_all('table')[0]
+    except:
+        raise ValueError('Data cannot be retrieved for this team/year combo.')
+    data = []
+    headings = [th.get_text() for th in table.find('tr').find_all('th')]
+    headings = headings[1:]
+    headings[3] = 'Home_Away'
+    data.append(headings)
+    table_body = table.find('tbody')
+    rows = table_body.find_all('tr')
+    for row_index in range(len(rows)):
+        row = rows[row_index]
+        try:
+            cols = row.find_all('td')
+            if cols[1].text == '': cols[1].string = team
+            if cols[3].text == '': cols[3].string = 'Home'
+            if cols[12].text == '': cols[12].string = 'None'
+            if cols[13].text == '': cols[13].string = 'None'
+            if cols[14].text == '': cols[14].string = 'None'
+            if cols[8].text == '': cols[8].string = '9'
+            if cols[16].text == '': cols[16].string = 'Unknown'
+            if cols[15].text == '': cols[15].string = 'Unknown'
+            if cols[17].text == '': cols[17].string = 'Unknown'
+            cols = [ele.text.strip() for ele in cols]
+            data.append([ele for ele in cols if ele])
+        except:
+            if len(cols) > 1:
+                cols = [ele.text.strip() for ele in cols][0:5]
+                data.append([ele for ele in cols if ele])
+    df = pd.DataFrame(data)
+    df = df.rename(columns=df.iloc[0])
+    df = df.reindex(df.index.drop(0))
+    df = df.drop('', axis = 1)
+    df['Attendance'] = df['Attendance'].replace(r'^Unknown$', np.nan, regex=True)
+    return df
+_team_results.get_table=_fixed_get_table
+
 TEAM_ABBRS = ['BAL', 'BOS', 'NYY', 'TBR', 'TOR', 'CHW', 'CLE', 'DET', 'KCR', 'MIN',
               'HOU', 'LAA', 'ATH', 'SEA', 'TEX', 'ATL', 'MIA', 'NYM', 'PHI', 'WSN',
               'CHC', 'CIN', 'MIL', 'PIT', 'STL', 'ARI', 'COL', 'LAD', 'SDP', 'SFG']
