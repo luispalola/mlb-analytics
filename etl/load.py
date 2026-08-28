@@ -92,11 +92,71 @@ def load_batting_stats(df):
                 row._asdict()
             )
 
+
+def prepare_pitching_stats(df):
+    teams = get_team_lookup()
+    players = get_player_lookup()
+    df = df.merge(players, left_on='mlbID', right_on='mlbam_id', how='left')
+    df = df.merge(teams, on='team_abbr', how='left')
+    df = df.rename(columns={
+        'W':'wins',
+        'L':'losses',
+        'ERA':'era',
+        'G':'games',
+        'GS':'games_started',
+        'IP':'innings_pitched',
+        'SO':'strikeouts',
+        'BB': 'walks',
+        'WHIP':'whip',
+        'FIP':'fip',
+        'WAR':'war',
+    })
+    cols=['player_id', 'team_id', 'season', 'wins', 'losses', 'era', 'games', 'games_started',
+          'innings_pitched', 'strikeouts', 'walks', 'whip', 'fip', 'war']
+    return df[cols]
+
+
+def load_pitching_stats(df):
+    df = df.astype(object).where(pd.notnull(df), None)
+    with engine.begin() as conn:
+        for row in df.itertuples(index=False):
+            conn.execute(
+                text("""
+                    INSERT INTO pitching_stats (
+                        player_id, team_id, season, wins, losses, era, games, games_started,
+                        innings_pitched, strikeouts, walks, whip, fip, war
+                    )
+                    VALUES (
+                        :player_id, :team_id, :season, :wins, :losses, :era, :games, :games_started,
+                        :innings_pitched, :strikeouts, :walks, :whip, :fip, :war
+                    )
+                    ON CONFLICT (player_id, season) DO UPDATE SET
+                        team_id = EXCLUDED.team_id,
+                        wins = EXCLUDED.wins,
+                        losses = EXCLUDED.losses,
+                        era = EXCLUDED.era,
+                        games = EXCLUDED.games,
+                        games_started = EXCLUDED.games_started,
+                        innings_pitched = EXCLUDED.innings_pitched,
+                        strikeouts = EXCLUDED.strikeouts,
+                        walks = EXCLUDED.walks,
+                        whip = EXCLUDED.whip,
+                        fip = EXCLUDED.fip,
+                        war = EXCLUDED.war,
+                        data_as_of = CURRENT_DATE
+                """),
+                row._asdict()
+            )
+
+
 if __name__ == "__main__":
-    from transform import build_players_dimension, build_batting_stats
+    from transform import build_players_dimension, build_batting_stats, build_pitching_stats
     players_df = build_players_dimension()
     load_players(players_df)
     print(f"Loaded {len(players_df)} players")
     batting_df = prepare_batting_stats(build_batting_stats())
     load_batting_stats(batting_df)
     print(f"Loaded {len(batting_df)} batting stats lines")
+    pitching_df = prepare_pitching_stats(build_pitching_stats())
+    load_pitching_stats(pitching_df)
+    print(f"Loaded {len(pitching_df)} pitching stats lines")

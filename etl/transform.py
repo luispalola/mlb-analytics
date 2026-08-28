@@ -80,6 +80,7 @@ def build_pitching_stats():
     merged['Name'] = merged['Name'].apply(fix_name_encoding)
     merged['team_abbr'] = merged.apply(resolve_team_abbr, axis=1)
     merged[['W', 'L', 'SV']] = merged[['W', 'L', 'SV']].fillna(0)
+    merged['ERA'] = merged['ERA'].replace([np.inf, -np.inf], np.nan)
     merged = add_fip(merged)
     return merged
 
