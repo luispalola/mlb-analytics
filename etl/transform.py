@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
-from extract import extract_batting_stats, extract_pitching_stats, extract_batting_war, extract_pitching_war
+import re
+from extract import extract_batting_stats, extract_pitching_stats, extract_batting_war, extract_pitching_war, extract_all_games
 
 def fix_name_encoding(name):
     return name.encode('latin1').decode('unicode_escape').encode('latin1').decode('utf-8')
@@ -106,6 +107,30 @@ def add_fip(df):
     df.loc[df['true_ip'] == 0, 'FIP'] = None
     df = df.drop(columns=['true_ip'])
     return df
+
+
+
+
+def parse_game_date(date_str, season):
+    m = re.match(r'^(.*?)(?:\s*\((\d)\))?$', date_str.strip())
+    clean_date, game_num = m.group(1).strip(), m.group(2)
+    game_num = int(game_num) if game_num else 1
+    parsed = pd.to_datetime(f'{clean_date}, {season}')
+    return parsed.date(), game_num
+
+def build_games():
+    df = extract_all_games()
+    df = df[df['Home_Away'] == 'Home'].copy()
+    df = df[df['R'].notna()].copy()
+    parsed = df.apply(lambda row: parse_game_date(row['Date'], row['season']), axis=1)
+    df['game_date'] = parsed.apply(lambda x: x[0])
+    df['game_num'] = parsed.apply(lambda x: x[1])
+    df['home_team_abbr'] = df['team_abbr']
+    df['away_team_abbr'] = df['Opp'].replace({'OAK' : 'ATH'})
+    df['home_score'] = df['R'].astype(int)
+    df['away_score'] = df['RA'].astype(int)
+    return df[['game_date', 'season', 'home_team_abbr', 'away_team_abbr', 'home_score', 'away_score', 'game_num']]
+
 
 
 
