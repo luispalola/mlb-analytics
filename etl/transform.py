@@ -1,5 +1,6 @@
 import pandas as pd
-from extract import extract_batting_stats, extract_pitching_stats, extract_batting_war
+import numpy as np
+from extract import extract_batting_stats, extract_pitching_stats, extract_batting_war, extract_pitching_war
 
 def fix_name_encoding(name):
     return name.encode('latin1').decode('unicode_escape').encode('latin1').decode('utf-8')
@@ -60,6 +61,50 @@ def build_batting_stats():
     merged['Name'] = merged['Name'].apply(fix_name_encoding)
     merged['team_abbr'] = merged.apply(resolve_team_abbr, axis=1)
     return merged
+
+
+
+def build_pitching_war():
+    war = extract_pitching_war()
+    war = war.dropna(subset=['mlb_ID'])
+    war['mlb_ID'] = war['mlb_ID'].astype(int)
+    war_summed = war.groupby(['mlb_ID', 'year_ID'], as_index=False)['WAR'].sum()
+    war_summed = war_summed.rename(columns={'mlb_ID': 'mlbID', 'year_ID': 'season'})
+    return war_summed
+
+def build_pitching_stats():
+    stats = extract_pitching_stats()
+    stats['mlbID'] = stats['mlbID'].astype(int)
+    war = build_pitching_war()
+    merged = stats.merge(war, on=['mlbID', 'season'], how='left')
+    merged['Name'] = merged['Name'].apply(fix_name_encoding)
+    merged['team_abbr'] = merged.apply(resolve_team_abbr, axis=1)
+    merged[['W', 'L', 'SV']] = merged[['W', 'L', 'SV']].fillna(0)
+    merged = add_fip(merged)
+    return merged
+
+
+def true_innings(ip):
+    whole = np.floor(ip)
+    outs = np.round((ip-whole)*10)
+    return whole + outs/3
+
+
+def add_fip(df):
+    df['true_ip'] = true_innings(df['IP'])
+    league = df.groupby('season').agg(
+        HR=('HR', 'sum'), BB=('BB', 'sum'), HBP=('HBP', 'sum'),
+        SO=('SO', 'sum'), IP=('true_ip', 'sum'), ER=('ER', 'sum'),
+    ).reset_index()
+    league['league_era'] = 9*league['ER'] / league['IP']
+    league['fip_constant'] = league['league_era'] - (
+        (13 * league['HR'] + 3 * (league['BB'] + league['HBP']) - 2 * league['SO']) / league['IP']
+    )
+    df = df.merge(league[['season', 'fip_constant']], on='season', how='left')
+    df['FIP'] = ((13*df['HR'] + 3*(df['BB'] + df['HBP']) - 2*df['SO']) / df['true_ip']) + df['fip_constant']
+    df.loc[df['true_ip'] == 0, 'FIP'] = None
+    df = df.drop(columns=['true_ip'])
+    return df
 
 
 
