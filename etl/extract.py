@@ -134,6 +134,16 @@ def extract_games_for_season(season, force_refresh=False):
     return pd.concat(frames, ignore_index=True)
 
 
+ALL_GAME_SEASONS = list(historical_seasons) + [current_season]
+
+def extract_all_games(force_refresh_current=False):
+    frames = []
+    for season in ALL_GAME_SEASONS:
+        force = force_refresh_current if season == current_season else False
+        frames.append(extract_games_for_season(season, force_refresh=force))
+    return pd.concat(frames, ignore_index=True)
+
+
 if __name__ == "__main__":
     df = extract_batting_stats()
     print(df.shape)
@@ -141,6 +151,6 @@ if __name__ == "__main__":
     pitch_df = extract_pitching_stats()
     print(pitch_df.shape)
     print(pitch_df.head())
-    games_df = extract_games_for_season(2021)
+    games_df=extract_all_games()
     print(games_df.shape)
-    print(games_df[['Date', 'team_abbr', 'Home_Away', 'Opp', 'W/L', 'R', 'RA']].head())
+    print(games_df[['Date', 'team_abbr', 'season', 'Home_Away', 'Opp', 'W/L', 'R', 'RA']].head())
