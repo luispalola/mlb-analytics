@@ -149,8 +149,40 @@ def load_pitching_stats(df):
             )
 
 
+
+def prepare_games(df):
+    teams=get_team_lookup()
+    home_teams = teams.rename(columns={'team_id':'home_team_id', 'team_abbr':'home_team_abbr'})
+    away_teams = teams.rename(columns={'team_id':'away_team_id', 'team_abbr':'away_team_abbr'})
+    df=df.merge(home_teams, on='home_team_abbr', how='left')
+    df=df.merge(away_teams, on='away_team_abbr', how='left')
+    df=df.rename(columns={'game_num': 'game_number'})
+    cols = ['game_date', 'season', 'home_team_id', 'away_team_id', 'home_score', 'away_score', 'game_number']
+    return df[cols]
+
+def load_games(df):
+    df = df.astype(object).where(pd.notnull(df), None)
+    with engine.begin() as conn:
+        for row in df.itertuples(index=False):
+            conn.execute(
+                text("""
+                    INSERT INTO games (
+                        game_date, season, home_team_id, away_team_id, home_score, away_score, game_number
+                    )
+                    VALUES (
+                        :game_date, :season, :home_team_id, :away_team_id, :home_score, :away_score, :game_number
+                    )
+                    ON CONFLICT (game_date, home_team_id, away_team_id, game_number) DO UPDATE SET
+                        home_score = EXCLUDED.home_score,
+                        away_score = EXCLUDED.away_score
+                """),
+                row._asdict()
+            )
+
+
+
 if __name__ == "__main__":
-    from transform import build_players_dimension, build_batting_stats, build_pitching_stats
+    from transform import build_players_dimension, build_batting_stats, build_pitching_stats, build_games
     players_df = build_players_dimension()
     load_players(players_df)
     print(f"Loaded {len(players_df)} players")
@@ -160,3 +192,6 @@ if __name__ == "__main__":
     pitching_df = prepare_pitching_stats(build_pitching_stats())
     load_pitching_stats(pitching_df)
     print(f"Loaded {len(pitching_df)} pitching stats lines")
+    games_df = prepare_games(build_games())
+    load_games(games_df)
+    print(f"Loaded {len(games_df)} games")
