@@ -3,12 +3,22 @@ from datetime import date
 import pandas as pd
 import numpy as np
 import pybaseball.team_results as _team_results
-from pybaseball import batting_stats_bref, bwar_bat, pitching_stats_bref, bwar_pitch, schedule_and_record
+from pybaseball import bwar_bat, bwar_pitch, schedule_and_record, batting_stats_range, pitching_stats_range
 
 RAW_DATA_DIR = "data/raw"
 
 historical_seasons = range(2021, 2026)
 current_season = 2026
+
+
+
+def get_season_end_date(season):
+    games = extract_games_for_season(season)
+    dates = games['Date'].str.replace(r'\s*\(\d\)', '', regex=True)
+    parsed = pd.to_datetime(dates + ', ' + str(season))
+    return parsed.max().strftime('%Y-%m-%d')
+
+
 
 def extract_batting_stats_historical(force_refresh=False):
     os.makedirs(RAW_DATA_DIR, exist_ok=True)
@@ -17,7 +27,8 @@ def extract_batting_stats_historical(force_refresh=False):
         return pd.read_parquet(cache_path)
     frames = []
     for season in historical_seasons:
-        season_df = batting_stats_bref(season)
+        end_date = get_season_end_date(season)
+        season_df = batting_stats_range(f"{season}-03-01", end_date)
         season_df["season"] = season
         frames.append(season_df)
     combined = pd.concat(frames, ignore_index = True)
@@ -30,7 +41,8 @@ def extract_batting_stats_current(force_refresh=False):
     cache_path = os.path.join(RAW_DATA_DIR, f"batting_stats_bref_{current_season}_asof_{pull_date}.parquet")
     if os.path.exists(cache_path) and not force_refresh:
         return pd.read_parquet(cache_path)
-    df = batting_stats_bref(current_season)
+    end_date = get_season_end_date(current_season)
+    df = batting_stats_range(f"{current_season}-03-01", end_date)
     df["season"] = current_season
     df.to_parquet(cache_path, index=False)
     return df
@@ -59,7 +71,8 @@ def extract_pitching_stats_historical(force_refresh=False):
         return pd.read_parquet(cache_path)
     frames = []
     for season in historical_seasons:
-        season_df = pitching_stats_bref(season)
+        end_date = get_season_end_date(season)
+        season_df = pitching_stats_range(f"{season}-03-01", end_date)
         season_df["season"] = season
         frames.append(season_df)
     combined = pd.concat(frames, ignore_index = True)
@@ -72,7 +85,8 @@ def extract_pitching_stats_current(force_refresh=False):
     cache_path = os.path.join(RAW_DATA_DIR, f"pitching_stats_bref_{current_season}_asof_{pull_date}.parquet")
     if os.path.exists(cache_path) and not force_refresh:
         return pd.read_parquet(cache_path)
-    df = pitching_stats_bref(current_season)
+    end_date = get_season_end_date(current_season)
+    df = pitching_stats_range(f"{current_season}-03-01", end_date)
     df["season"] = current_season
     df.to_parquet(cache_path, index=False)
     return df
