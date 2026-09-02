@@ -1,9 +1,8 @@
--- View: team game-by-game log with rolling and cumulative form, for the
--- time-series element of the Tableau "team over/underperformers" page.
--- One row per team per game (2 rows per game in `games`): ~28,318 rows.
--- Extends rolling_win_percentage.sql with a per-season game counter, running
--- season win %, and opponent / home-away context for tooltips.
--- No ORDER BY -- Tableau handles sorting.
+-- one row per team per game; each game makes two rows, one for each team (~28,318 rows across 6 seasons)
+-- feeds the line chart on the tableau "team over/underperformers" page that shows how a team's form rises and falls over a season.
+-- same core logic as rolling_win_percentage.sql, plus a few columns tableau
+-- needs a game number within the season (1,2,3,...), a running season long win %, and the opponent and home/away flag for hover tooltips.
+-- no order by on purpose as tableau does its own sorting
 
 
 create or replace view vw_team_rolling_winpct as
