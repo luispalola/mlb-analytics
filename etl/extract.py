@@ -3,7 +3,7 @@ from datetime import date
 import pandas as pd
 import numpy as np
 import pybaseball.team_results as _team_results
-from pybaseball import bwar_bat, bwar_pitch, schedule_and_record, batting_stats_range, pitching_stats_range
+from pybaseball import bwar_bat, bwar_pitch, schedule_and_record, batting_stats_range, pitching_stats_range, statcast_batter_expected_stats
 
 RAW_DATA_DIR = "data/raw"
 
@@ -62,6 +62,36 @@ def extract_batting_war(force_refresh=False):
     df.to_parquet(cache_path, index=False)
     return df
 
+
+def extract_batting_expected_stats_historical(force_refresh=False):
+    os.makedirs(RAW_DATA_DIR, exist_ok=True)
+    cache_path = os.path.join(RAW_DATA_DIR, "batting_expected_stats_2021_2025.parquet")
+    if os.path.exists(cache_path) and not force_refresh:
+        return pd.read_parquet(cache_path)
+    frames = []
+    for season in historical_seasons:
+        season_df = statcast_batter_expected_stats(season, minPA=1)
+        season_df["season"] = season
+        frames.append(season_df)
+    combined = pd.concat(frames, ignore_index=True)
+    combined.to_parquet(cache_path, index=False)
+    return combined
+
+def extract_batting_expected_stats_current(force_refresh=False):
+    os.makedirs(RAW_DATA_DIR, exist_ok=True)
+    pull_date = date.today().isoformat()
+    cache_path = os.path.join(RAW_DATA_DIR, f"batting_expected_stats_{current_season}_asof_{pull_date}.parquet")
+    if os.path.exists(cache_path) and not force_refresh:
+        return pd.read_parquet(cache_path)
+    df = statcast_batter_expected_stats(current_season, minPA=1)
+    df["season"] = current_season
+    df.to_parquet(cache_path, index=False)
+    return df
+
+def extract_batting_expected_stats(force_refresh_current=False):
+    historical = extract_batting_expected_stats_historical()
+    current = extract_batting_expected_stats_current(force_refresh=force_refresh_current)
+    return pd.concat([historical, current], ignore_index=True)
 
 
 def extract_pitching_stats_historical(force_refresh=False):
@@ -207,3 +237,6 @@ if __name__ == "__main__":
     games_df=extract_all_games()
     print(games_df.shape)
     print(games_df[['Date', 'team_abbr', 'season', 'Home_Away', 'Opp', 'W/L', 'R', 'RA']].head())
+    exp_df = extract_batting_expected_stats()
+    print(exp_df.shape)
+    print(exp_df[['last_name, first_name', 'player_id', 'season', 'woba', 'est_woba']].head())
