@@ -55,6 +55,8 @@ CREATE TABLE batting_stats (
     slg NUMERIC(4,3),
     ops NUMERIC(4,3),
     war NUMERIC(4,1),
+    woba NUMERIC(4,3),
+    est_woba NUMERIC(4,3),
     data_as_of DATE NOT NULL DEFAULT CURRENT_DATE,
     UNIQUE (player_id, season)
 );
