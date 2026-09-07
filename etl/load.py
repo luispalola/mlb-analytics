@@ -49,7 +49,7 @@ def prepare_batting_stats(df):
         'WAR': 'war',
     })
     cols = ['player_id', 'team_id', 'season', 'games_played', 'plate_appearances', 'at_bats', 'hits',
-            'doubles', 'triples', 'home_runs', 'rbi', 'walks', 'strikeouts', 'stolen_bases', 'avg', 'obp', 'slg', 'ops', 'war']
+            'doubles', 'triples', 'home_runs', 'rbi', 'walks', 'strikeouts', 'stolen_bases', 'avg', 'obp', 'slg', 'ops', 'war', 'woba', 'est_woba']
     return df[cols]
 
 
@@ -62,12 +62,12 @@ def load_batting_stats(df):
                     INSERT INTO batting_stats (
                         player_id, team_id, season, games_played, plate_appearances, at_bats,
                         hits, doubles, triples, home_runs, rbi, walks, strikeouts, stolen_bases,
-                        avg, obp, slg, ops, war
+                        avg, obp, slg, ops, war, woba, est_woba
                     )
                     VALUES (
                         :player_id, :team_id, :season, :games_played, :plate_appearances, :at_bats,
                         :hits, :doubles, :triples, :home_runs, :rbi,  :walks, :strikeouts, :stolen_bases,
-                        :avg, :obp, :slg, :ops, :war
+                        :avg, :obp, :slg, :ops, :war, :woba, :est_woba
                     )
                     ON CONFLICT (player_id, season) DO UPDATE SET
                         team_id = EXCLUDED.team_id,
@@ -87,6 +87,8 @@ def load_batting_stats(df):
                         slg = EXCLUDED.slg,
                         ops = EXCLUDED.ops,
                         war = EXCLUDED.war,
+                        woba = EXCLUDED.woba,
+                        est_woba = EXCLUDED.est_woba,
                         data_as_of = CURRENT_DATE
                 """),
                 row._asdict()
