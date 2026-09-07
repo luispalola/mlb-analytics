@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import re
-from extract import extract_batting_stats, extract_pitching_stats, extract_batting_war, extract_pitching_war, extract_all_games
+from extract import extract_batting_stats, extract_pitching_stats, extract_batting_war, extract_pitching_war, extract_all_games, extract_batting_expected_stats
 
 def fix_name_encoding(name):
     return name.encode('latin1').decode('unicode_escape').encode('latin1').decode('utf-8')
@@ -26,6 +26,11 @@ def build_batting_war():
     war_summed = war_summed.rename(columns={'mlb_ID': 'mlbID', 'year_ID': 'season'})
     return war_summed
 
+def build_batting_expected_stats():
+    exp = extract_batting_expected_stats()
+    exp = exp.rename(columns={'player_id': 'mlbID'})
+    exp['mlbID'] = exp['mlbID'].astype(int)
+    return exp[['mlbID', 'season', 'woba', 'est_woba']]
 
 
 TEAM_ABBR_LOOKUP = {
@@ -58,7 +63,9 @@ def resolve_team_abbr(row):
 def build_batting_stats():
     stats = extract_batting_stats()
     war = build_batting_war()
+    exp_stats = build_batting_expected_stats()
     merged = stats.merge(war, on=['mlbID', 'season'], how='left')
+    merged = merged.merge(exp_stats, on=['mlbID', 'season'], how='left')
     merged['Name'] = merged['Name'].apply(fix_name_encoding)
     merged['team_abbr'] = merged.apply(resolve_team_abbr, axis=1)
     return merged
