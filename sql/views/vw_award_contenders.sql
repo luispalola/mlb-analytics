@@ -13,7 +13,7 @@
 
 create or replace view vw_award_contenders as
 with batting_side as (
-    select player_id, team_id, season, war, plate_appearances, ops
+    select player_id, team_id, season, war, plate_appearances, ops, woba, est_woba
     from batting_stats
 ),
 pitching_side as (
@@ -30,6 +30,8 @@ combined as (
         coalesce(b.war,0) + coalesce(p.war,0) as total_war,
         b.plate_appearances,
         b.ops,
+        b.woba,
+        b.est_woba,
         p.innings_pitched,
         p.era,
         p.fip
@@ -89,7 +91,10 @@ select
     y.prior_ops,
     case when y.prior_season = wr.season - 1
         then round(y.current_ops-y.prior_ops,3) end as ops_change,
-    (wr.plate_appearances >= 300) as is_qualified_hitter
+    (wr.plate_appearances >= 300) as is_qualified_hitter,
+    wr.woba,
+    wr.est_woba,
+    round(wr.woba - wr.est_woba, 3) as woba_gap
 from war_ranked wr
 join players pl on wr.player_id = pl.player_id
 left join teams t on wr.team_id = t.team_id
