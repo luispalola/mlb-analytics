@@ -200,7 +200,11 @@ def resolve_schedule_abbr(team_abbr, season):
 
 def extract_team_season_games(team_abbr, season, force_refresh=False):
     os.makedirs(RAW_DATA_DIR, exist_ok=True)
-    cache_path = os.path.join(RAW_DATA_DIR, f"games_{team_abbr}_{season}.parquet")
+    if season == current_season:
+        pull_date = date.today().isoformat()
+        cache_path = os.path.join(RAW_DATA_DIR, f"games_{team_abbr}_{season}_asof_{pull_date}.parquet")
+    else:
+        cache_path = os.path.join(RAW_DATA_DIR, f"games_{team_abbr}_{season}.parquet")
     if os.path.exists(cache_path) and not force_refresh:
         return pd.read_parquet(cache_path)
     br_abbr = resolve_schedule_abbr(team_abbr, season)
